@@ -1,0 +1,67 @@
+spring:
+  application:
+    name: football-standings
+  security:
+    user:
+      name: admin
+      password: admin123
+
+server:
+  port: 8080
+
+football:
+  api:
+    key: 9bb66184e0c8145384fd2cc0f7b914ada57b4e8fd2e4d6d586adcc27c257a978
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
+  metrics:
+    enable:
+      all: true
+
+logging:
+  level:
+    org:
+      springframework: INFO
+
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        slidingWindowSize: 5
+        minimumNumberOfCalls: 3
+        failureRateThreshold: 50
+        waitDurationInOpenState: 30s
+        automatic-transition-from-open-to-half-open-enabled: true
+        permitted-number-of-calls-in-half-open-state: 3
+    instances:
+      football-countries-api:
+        base-config: default
+        registerHealthIndicator: true
+      football-leagues-api:
+        base-config: default
+        register-health-indicator: true
+      football-standings-api:
+        base-config: default
+        register-health-indicator: true
+
+  retry:
+    configs:
+      default:
+        maxAttempts: 3
+        waitDuration: 2s
+        enableExponentialBackoff: true
+        exponentialBackoffMultiplier: 2
+    instances:
+      football-countries-api:
+        base-config: default
+      football-leagues-api:
+        base-config: default
+      football-standings-api:
+        base-config: default

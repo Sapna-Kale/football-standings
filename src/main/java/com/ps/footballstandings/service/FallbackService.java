@@ -18,9 +18,9 @@ public class FallbackService {
   public List<League> getDefaultLeagues() {
     return List.of(
         new League(
-            "149",
             "44",
             "England",
+            "149",
             "Non League Premier",
             "2024/2025",
             "https://apiv3.apifootball.com/badges/logo_leagues/149_non-league-premier.png"));
