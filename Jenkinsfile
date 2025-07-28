@@ -2,7 +2,6 @@ pipeline {
   agent any
 
   environment {
-    // Optional: If using a .env file or secret store
     API_KEY = credentials('FOOTBALL_API_KEY')
     DOCKER_IMAGE = 'football-standings'
   }
@@ -39,18 +38,6 @@ pipeline {
       steps {
         echo "Running container for validation..."
         sh 'docker run -e FOOTBALL_API_KEY=$API_KEY -p 8080:8080 -d $DOCKER_IMAGE'
-      }
-    }
-
-    // Optional stage
-    stage('Push Docker Image') {
-      when {
-        expression { return env.DOCKER_USERNAME != null }
-      }
-      steps {
-        echo 'Pushing Docker image to registry...'
-        sh 'docker tag $DOCKER_IMAGE $DOCKER_USERNAME/$DOCKER_IMAGE'
-        sh 'docker push $DOCKER_USERNAME/$DOCKER_IMAGE'
       }
     }
   }
