@@ -24,24 +24,6 @@ The backend provides REST endpoints to retrieve:
 - **Fallback**: Provides mock/fallback data if the external API is unavailable.
 - **Layered Architecture**: Separates controller, service, and client responsibilities.
 
----
-
-### 🎨 Frontend (`ui-service`)
-
-The frontend is built with Angular and provides:
-
-- Country dropdown
-- League filtering
-- Team standings display
-
-#### Features:
-
-- **Service-based architecture** for clean separation of concerns.
-- **HTTP communication** with the backend.
-- **Material Design UI** via Angular Material.
-- **Dockerized** using Nginx for production-ready deployment.
-
----
 
 ## 📊 Architecture Flow
 

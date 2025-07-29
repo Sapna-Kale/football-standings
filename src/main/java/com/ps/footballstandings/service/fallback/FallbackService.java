@@ -1,4 +1,4 @@
-package com.ps.footballstandings.service;
+package com.ps.footballstandings.service.fallback;
 
 import com.ps.footballstandings.model.Country;
 import com.ps.footballstandings.model.League;

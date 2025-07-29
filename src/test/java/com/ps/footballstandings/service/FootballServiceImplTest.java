@@ -7,143 +7,169 @@ import com.ps.footballstandings.client.FootballApiClient;
 import com.ps.footballstandings.model.Country;
 import com.ps.footballstandings.model.League;
 import com.ps.footballstandings.model.Standing;
+import com.ps.footballstandings.service.fallback.FallbackHelper;
+import com.ps.footballstandings.service.fallback.FallbackService;
+import java.util.Collections;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.*;
+import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.test.util.ReflectionTestUtils;
 
+@ExtendWith(org.mockito.junit.jupiter.MockitoExtension.class)
 class FootballServiceImplTest {
 
   @Mock private FootballApiClient apiClient;
 
+  @Mock private CacheManager cacheManager;
+
   @Mock private FallbackService fallbackService;
 
-  @InjectMocks private FootballServiceImpl footballService;
+  @InjectMocks private FallbackHelper fallbackHelper;
 
-  @Mock private CacheManager cacheManager;
+  private FootballServiceImpl footballService;
 
   private final String apiKey = "9bb66184e0c8145384fd2cc0f7b914ada57b4e8fd2e4d6d586adcc27c257a978";
 
   @BeforeEach
   void setUp() {
-    MockitoAnnotations.openMocks(this);
-    footballService = new FootballServiceImpl(apiClient, fallbackService, cacheManager);
+    fallbackHelper = new FallbackHelper(cacheManager, fallbackService);
+    footballService = new FootballServiceImpl(apiClient, fallbackHelper);
     ReflectionTestUtils.setField(footballService, "apiKey", apiKey);
   }
 
   @Test
-  @DisplayName("Test getCountry success api response")
-  void testGetCountries_returnsCountriesFromApi() {
-    List<Country> mockCountries =
-        List.of(
-            new Country("1", "Spain", "country_logo"), new Country("2", "Italy", "country_logo"));
-
-    when(apiClient.getCountries(anyString())).thenReturn(mockCountries);
+  @DisplayName("Get countries - API success")
+  void testGetCountries_returnsApiData() {
+    List<Country> countries = List.of(new Country("1", "Brazil", "logo"));
+    when(apiClient.getCountries(apiKey)).thenReturn(countries);
 
     List<Country> result = footballService.getCountries();
 
-    assertEquals(2, result.size());
-    verify(apiClient, times(1)).getCountries(anyString());
+    assertEquals(1, result.size());
+    verify(apiClient, times(1)).getCountries(apiKey);
   }
 
-  @Test()
-  @DisplayName("Test getCountry fallback api response")
-  void testGetCountriesFallback_returnsFallbackData() {
-    List<Country> fallback = List.of(new Country("0", "Fallback", "country_logo"));
-    when(fallbackService.getDefaultCountries()).thenReturn(fallback);
+  @Test
+  @DisplayName("Get leagues - API success")
+  void testGetLeagues_returnsApiData() {
+    List<League> leagues = List.of(new League("123", "44", "England", "League A", "2024", "logo"));
+    when(apiClient.getLeagues("123", apiKey)).thenReturn(leagues);
 
-    List<Country> result = footballService.getCountriesFallback(new RuntimeException("API down"));
+    List<League> result = footballService.getLeagues("123");
+
+    assertEquals(1, result.size());
+    assertEquals("League A", result.get(0).getLeague_name());
+  }
+
+  @Test
+  @DisplayName("Get standings - API success")
+  void testGetStandings_returnsApiData() {
+    List<Standing> standings =
+        List.of(new Standing("England", "123", "League A", "1", "Team X", "Promoted", "logo"));
+    when(apiClient.getStandings("123", apiKey)).thenReturn(standings);
+
+    List<Standing> result = footballService.getStandings("123");
+
+    assertEquals(1, result.size());
+    assertEquals("Team X", result.get(0).getTeam_name());
+  }
+
+  @Test
+  @DisplayName("Fallback: countries - no cache, fallback used")
+  void testCountriesFallback_usesFallbackWhenNoCache() {
+    when(cacheManager.getCache("countries")).thenReturn(null);
+    when(fallbackService.getDefaultCountries())
+        .thenReturn(List.of(new Country("0", "Fallback", "logo")));
+
+    List<Country> result = footballService.getCountriesFallback(new RuntimeException("fail"));
 
     assertEquals(1, result.size());
     assertEquals("Fallback", result.get(0).getCountry_name());
   }
 
   @Test
-  @DisplayName("Test getLeague success api response")
-  void testGetLeagues_shouldReturnLeaguesFromApi() {
-    String countryId = "123";
-    List<League> mockLeagues =
-        List.of(
-            new League(
-                countryId, "England", "44", "Non League Premier", "2024/2025", "league_logo"));
+  @DisplayName("Fallback: leagues - returns from fallback")
+  void testLeaguesFallback_returnsFromFallback() {
+    when(cacheManager.getCache("leagues")).thenReturn(null);
+    when(fallbackService.getDefaultLeagues())
+        .thenReturn(
+            List.of(new League("123", "999", "Country", "Fallback League", "2024", "logo")));
 
-    when(apiClient.getLeagues(countryId, apiKey)).thenReturn(mockLeagues);
+    List<League> result = footballService.getLeaguesFallback("123", new RuntimeException("fail"));
 
-    List<League> result = footballService.getLeagues(countryId);
-
-    assertNotNull(result);
     assertEquals(1, result.size());
-    assertEquals("Non League Premier", result.get(0).getLeague_name());
-    verify(apiClient, times(1)).getLeagues(eq(countryId), anyString());
-  }
-
-  @Test
-  @DisplayName("Test getLeague fallback api response")
-  void testGetLeaguesFallback_shouldReturnFromFallbackOrCache() {
-    String countryId = "123";
-    List<League> fallbackLeagues =
-        List.of(
-            new League(countryId, "44", "England", "Fallback League", "2024/2025", "league_logo"));
-    when(fallbackService.getDefaultLeagues()).thenReturn(fallbackLeagues);
-
-    List<League> result =
-        footballService.getLeaguesFallback(countryId, new RuntimeException("Simulated"));
-
-    assertNotNull(result);
-    assertFalse(result.isEmpty());
     assertEquals("Fallback League", result.get(0).getLeague_name());
   }
 
   @Test
-  @DisplayName("Test getStanding success api response")
-  void testGetStandings_shouldReturnStandingsFromApi() {
-    String leagueId = "789";
-    List<Standing> mockStandings =
-        List.of(
-            new Standing(
-                "England",
-                leagueId,
-                "Non League Premier",
-                "3035",
-                "Team A",
-                "Promotion",
-                "team_badge"));
+  @DisplayName("Fallback: standings - cache available")
+  void testStandingsFallback_returnsFromCache() {
+    String leagueId = "555";
+    List<Standing> cachedData =
+        List.of(new Standing("England", leagueId, "League A", "5", "Team Z", "Mid", "badge"));
 
-    when(apiClient.getStandings(leagueId, apiKey)).thenReturn(mockStandings);
+    Cache cacheMock = mock(Cache.class);
+    when(cacheManager.getCache("standings")).thenReturn(cacheMock);
+    when(cacheMock.get(eq(leagueId), eq(List.class))).thenReturn(cachedData);
 
-    List<Standing> result = footballService.getStandings(leagueId);
+    List<Standing> result =
+        footballService.getStandingsFallback(leagueId, new RuntimeException("fail"));
 
-    assertNotNull(result);
-    assertEquals(1, result.size());
-    assertEquals("Team A", result.get(0).getTeam_name());
-    verify(apiClient).getStandings(eq(leagueId), anyString());
+    assertEquals("Team Z", result.get(0).getTeam_name());
   }
 
   @Test
-  @DisplayName("Test getStanding fallback api response")
-  void testGetStandingsFallback_shouldReturnFromFallbackOrCache() {
-    String leagueId = "789";
-    List<Standing> fallback =
-        List.of(
-            new Standing(
-                "England",
-                leagueId,
-                "Non League Premier",
-                "3035",
-                "Fallback Team",
-                "Promotion",
-                "team_badge"));
-    when(fallbackService.getDefaultStandings()).thenReturn(fallback);
+  @DisplayName("Fallback: standings - no cache, fallback used")
+  void testStandingsFallback_usesFallback() {
+    String leagueId = "555";
+
+    when(cacheManager.getCache("standings")).thenReturn(null);
+    when(fallbackService.getDefaultStandings())
+        .thenReturn(
+            List.of(
+                new Standing(
+                    "FallbackCountry",
+                    leagueId,
+                    "Fallback League",
+                    "9",
+                    "FallbackTeam",
+                    "None",
+                    "logo")));
 
     List<Standing> result =
-        footballService.getStandingsFallback(leagueId, new RuntimeException("Simulated"));
+        footballService.getStandingsFallback(leagueId, new RuntimeException("down"));
 
-    assertEquals(1, result.size());
-    assertEquals("Fallback Team", result.get(0).getTeam_name());
+    assertEquals("FallbackTeam", result.get(0).getTeam_name());
+  }
+
+  @Test
+  @DisplayName("Fallback: empty cache, fallback used")
+  void testFallback_whenCacheEmpty_usesFallback() {
+    String countryId = "1";
+
+    Cache cache = mock(Cache.class);
+    when(cacheManager.getCache("leagues")).thenReturn(cache);
+    when(cache.get(countryId, List.class)).thenReturn(Collections.emptyList());
+
+    when(fallbackService.getDefaultLeagues())
+        .thenReturn(
+            List.of(new League("1", "100", "Fallback", "EmptyFallbackLeague", "2024", "logo")));
+
+    List<League> result =
+        footballService.getLeaguesFallback(countryId, new RuntimeException("fail"));
+
+    assertEquals("EmptyFallbackLeague", result.get(0).getLeague_name());
+  }
+
+  @Test
+  @DisplayName("Fallback: unknown type returns empty list")
+  void testFallback_unknownType_returnsEmptyList() {
+    List result = fallbackHelper.resolveFallback("abc", "key", String.class);
+    assertTrue(result.isEmpty());
   }
 }

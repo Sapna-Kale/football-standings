@@ -1,10 +1,9 @@
 spring:
   application:
     name: football-standings
-  security:
-    user:
-      name: admin
-      password: admin123
+
+auth.username: admin
+auth.password: admin123
 
 server:
   port: 8080
