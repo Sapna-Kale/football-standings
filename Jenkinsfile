@@ -1,51 +1,38 @@
 pipeline {
   agent any
-
   environment {
-    API_KEY = credentials('FOOTBALL_API_KEY')
-    DOCKER_IMAGE = 'football-standings'
+    DOCKER_IMAGE = "football-standings"
+    IMAGE_TAG = "v1.0.${env.BUILD_NUMBER}"
+    REGISTRY = "your-jfrog-host/your-project"
   }
 
   stages {
     stage('Checkout') {
       steps {
-        checkout scm
+        git branch: 'main', url: 'https://<your-repo>.git'
       }
     }
-
-    stage('Build') {
+    stage('Build & Test') {
       steps {
-        echo 'Building the project...'
-        sh './mvnw clean install -DskipTests=false'
+        sh './mvnw clean test'
       }
     }
-
-    stage('Run Tests') {
+    stage('Package & Docker Build') {
       steps {
-        echo 'Running unit tests...'
-        sh './mvnw test'
+        sh './mvnw package -DskipTests'
+        sh "docker build -t $DOCKER_IMAGE:$IMAGE_TAG ."
       }
     }
-
-    stage('Build Docker Image') {
+    stage('Push to Registry') {
       steps {
-        echo "Building Docker image..."
-        sh 'docker build -t $DOCKER_IMAGE .'
+        sh "docker tag $DOCKER_IMAGE:$IMAGE_TAG $REGISTRY/$DOCKER_IMAGE:$IMAGE_TAG"
+        sh "docker push $REGISTRY/$DOCKER_IMAGE:$IMAGE_TAG"
       }
     }
-
-    stage('Run Docker Container (Local Test)') {
+    stage('Deploy to Kubernetes') {
       steps {
-        echo "Running container for validation..."
-        sh 'docker run -e FOOTBALL_API_KEY=$API_KEY -p 8080:8080 -d $DOCKER_IMAGE'
+        sh "kubectl set image deployment/football-backend football-backend=$REGISTRY/$DOCKER_IMAGE:$IMAGE_TAG --record"
       }
-    }
-  }
-
-  post {
-    always {
-      echo 'Cleaning up Docker containers...'
-      sh 'docker ps -aq --filter ancestor=$DOCKER_IMAGE | xargs -r docker rm -f || true'
     }
   }
 }

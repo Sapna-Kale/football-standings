@@ -13,25 +13,25 @@ import org.springframework.web.bind.annotation.*;
 @CrossOrigin(origins = "http://localhost:4200")
 public class AuthController {
 
-    private final JwtUtil jwtUtil;
+  private final JwtUtil jwtUtil;
 
-    @Value("${auth.username}")
-    private String expectedUsername;
+  @Value("${auth.username}")
+  private String expectedUsername;
 
-    @Value("${auth.password}")
-    private String expectedPassword;
+  @Value("${auth.password}")
+  private String expectedPassword;
 
-    public AuthController(JwtUtil jwtUtil) {
-        this.jwtUtil = jwtUtil;
+  public AuthController(JwtUtil jwtUtil) {
+    this.jwtUtil = jwtUtil;
+  }
+
+  @PostMapping("/login")
+  public ResponseEntity<?> login(@RequestBody AuthRequest request) {
+    if (expectedUsername.equals(request.getUsername())
+        && expectedPassword.equals(request.getPassword())) {
+      String token = jwtUtil.generateToken(request.getUsername());
+      return ResponseEntity.ok(new AuthResponse(token));
     }
-
-    @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody AuthRequest request) {
-        if (expectedUsername.equals(request.getUsername()) &&
-                expectedPassword.equals(request.getPassword())) {
-            String token = jwtUtil.generateToken(request.getUsername());
-            return ResponseEntity.ok(new AuthResponse(token));
-        }
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid credentials");
-    }
+    return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid credentials");
+  }
 }
