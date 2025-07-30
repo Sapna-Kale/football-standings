@@ -1,46 +1,54 @@
-# ⚽ Football Standings App
+# Football Standings Backend
 
-This repository contains a full-stack football standings application composed of:
-
-- **Backend (`football-service`)**: A Spring Boot application that interacts with a football data API.
-- **Frontend (`ui-service`)**: An Angular single-page application for displaying country, league, and team standings.
+This is the Spring Boot backend service for the Football Standings app.  
+It provides REST APIs to fetch countries, leagues, and standings from external football APIs with JWT-based security.
 
 ---
 
-## 📐 Design & Implementation
+## Tech Stack
 
-### 🔧 Backend (`football-service`)
+- **Framework:** Spring Boot 3
+- **Language:** Java 17
+- **Security:** Spring Security + JWT
+- **Build Tool:** Maven
+- **API Integration:** Feign Client
+- **Caching:** Spring Cache
+- **Deployment:** Dockerized
 
-The backend provides REST endpoints to retrieve:
+---
 
-- Countries
-- Leagues for a selected country
-- Standings for a selected league
+## Design Patterns / Principles
 
-#### Features:
+- **SOLID Principles**
+- **Strategy Pattern** – External API providers
+- **Separation of Concerns** – Controller, Service, Fallback, Config
+- **HATEOAS-Ready** design
+- **12-Factor App** adherence
 
-- **Resilience**: Uses Resilience4j for `@CircuitBreaker` and `@Retry` to handle API failures gracefully.
-- **Caching**: Implements Spring Cache to reduce redundant external API calls.
-- **Fallback**: Provides mock/fallback data if the external API is unavailable.
-- **Layered Architecture**: Separates controller, service, and client responsibilities.
+---
 
+## Prerequisites
 
-## 📊 Architecture Flow
+- JDK 17+
+- Maven
+- Docker Desktop (for containerized run)
+- Internet access (for live football API integration)
 
-> Diagram created using [draw.io](https://draw.io) – saved as `docs/architecture-diagram.png`.
+---
 
-```plaintext
-User
-  |
-  v
-Angular UI (ui-service)
-  |
-  v
-Spring Boot Backend (football-service)
-  |
-  v
-External Football API
+## Steps to Run Locally
 
-External API
-     ↓ fails
-FallbackService (Mocked data returned)
+```bash
+cd backend
+./mvnw clean install
+java -jar target/football-standings-0.0.1-SNAPSHOT.jar
+
+```
+
+## Steps to Run with Docker
+
+```bash
+docker build -t football-standings:v1.0.0 .
+docker run -p 8080:8080 football-standings:v1.0.0
+
+```
